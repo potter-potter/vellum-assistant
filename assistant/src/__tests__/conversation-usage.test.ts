@@ -1,13 +1,4 @@
-import { beforeAll, beforeEach, describe, expect, mock, test } from "bun:test";
-
-import { setOverridesForTesting } from "./feature-flag-test-helpers.js";
-
-// Legacy-shaped fixtures (llm.default-centric resolution): pinned to the
-// flag-off cascade. Override-or-default (flag-on) semantics are pinned by
-// llm-resolver-override-or-default.test.ts and its companion suites.
-beforeAll(() => {
-  setOverridesForTesting({ "override-or-default-resolution": false });
-});
+import { beforeEach, describe, expect, mock, test } from "bun:test";
 
 const updateConversationUsageCalls: Array<{
   conversationId: string;
@@ -63,31 +54,6 @@ await initializeDb();
 
 function createMockLlmConfig() {
   return {
-    default: {
-      provider: "anthropic" as const,
-      model: "claude-opus-4-6",
-      maxTokens: 64_000,
-      effort: "max" as const,
-      speed: "standard" as const,
-      verbosity: "medium" as const,
-      temperature: null,
-      thinking: { enabled: true, streamThinking: true },
-      contextWindow: {
-        enabled: true,
-        maxInputTokens: 200_000,
-        targetBudgetRatio: 0.3,
-        compactThreshold: 0.8,
-        summaryBudgetRatio: 0.05,
-        overflowRecovery: {
-          enabled: true,
-          safetyMarginRatio: 0.05,
-          maxAttempts: 3,
-          interactiveLatestTurnCompression: "summarize" as const,
-          nonInteractiveLatestTurnCompression: "truncate" as const,
-        },
-      },
-      openrouter: { only: [] },
-    },
     profiles: {
       conversationProfile: {
         provider: "openai" as const,
@@ -409,9 +375,11 @@ describe("recordUsage", () => {
       undefined,
       1,
       undefined,
+      // No override profile: an override wins selection at every call site
+      // (covered by the main-agent test above), so attribution lands on the
+      // call-site rung only when the turn carries no override.
       {
         callSite: "conversationSummarization",
-        overrideProfile: "conversationProfile",
       },
     );
 

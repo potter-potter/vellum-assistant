@@ -215,7 +215,8 @@ export interface SendMessageConfig {
    * LLM call-site identifier. `RetryProvider` resolves
    * provider/model/maxTokens/effort/speed/verbosity/temperature/thinking/
    * contextWindow via `resolveCallSiteConfig(callSite, config.llm)`, falling
-   * back to `llm.default` when no callSite-specific entry is present.
+   * back to the shipped call-site defaults when no callSite-specific entry
+   * is present.
    */
   callSite?: LLMCallSite;
   /**

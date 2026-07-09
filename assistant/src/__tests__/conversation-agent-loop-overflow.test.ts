@@ -12,27 +12,10 @@
  * Tests 2, 8, 9, and 10 are now active and passing against current code.
  */
 import { createRequire } from "node:module";
-import {
-  afterAll,
-  beforeAll,
-  beforeEach,
-  describe,
-  expect,
-  mock,
-  test,
-} from "bun:test";
-
-import { setOverridesForTesting } from "./feature-flag-test-helpers.js";
-
-// Legacy-shaped fixtures (llm.default-centric resolution): pinned to the
-// flag-off cascade. Override-or-default (flag-on) semantics are pinned by
-// llm-resolver-override-or-default.test.ts and its companion suites.
-beforeAll(() => {
-  setOverridesForTesting({ "override-or-default-resolution": false });
-});
+import { afterAll, beforeEach, describe, expect, mock, test } from "bun:test";
 
 import type { LoopToolExecutor } from "../agent/loop.js";
-import type { LLMConfig } from "../config/schemas/llm.js";
+import { type LLMConfig, LLMSchema } from "../config/schemas/llm.js";
 import type { ServerMessage } from "../daemon/message-protocol.js";
 import { resetPluginRegistryAndRegisterDefaults } from "../plugins/defaults/index.js";
 import type { Message, Provider, ToolDefinition } from "../providers/types.js";
@@ -76,39 +59,10 @@ mock.module("../util/logger.js", () => ({
     new Proxy({} as Record<string, unknown>, { get: () => () => {} }),
 }));
 
-const defaultLlmConfig: LLMConfig = {
-  default: {
-    provider: "anthropic",
-    model: "mock-model",
-    maxTokens: 4096,
-    effort: "max" as const,
-    speed: "standard" as const,
-    verbosity: "medium" as const,
-    temperature: null,
-    topP: null,
-    thinking: { enabled: false, streamThinking: true },
-    contextWindow: {
-      enabled: true,
-      maxInputTokens: 200_000,
-      targetBudgetRatio: 0.3,
-      compactThreshold: 0.8,
-      summaryBudgetRatio: 0.05,
-      overflowRecovery: {
-        enabled: true,
-        safetyMarginRatio: 0.05,
-        maxAttempts: 3,
-        interactiveLatestTurnCompression: "summarize",
-        nonInteractiveLatestTurnCompression: "truncate",
-      },
-    },
-    openrouter: { only: [] },
-  },
-  profiles: {},
-  profileOrder: [],
-  callSites: {},
-  profileSession: { defaultTtlSeconds: 1800, maxTtlSeconds: 43200 },
-  pricingOverrides: [],
-};
+// Empty parse: resolution bottoms out on the code-owned catalog anchor, whose
+// context window (200k max input, default budget ratios and overflow-recovery
+// knobs) is the budget every scenario below is written against.
+const defaultLlmConfig: LLMConfig = LLMSchema.parse({});
 
 let mockLlmConfig: LLMConfig = structuredClone(defaultLlmConfig);
 
@@ -781,12 +735,15 @@ beforeEach(() => {
 describe("session-agent-loop overflow recovery (JARVIS-110)", () => {
   test("usage update context max follows active main-agent profile budget", async () => {
     // GIVEN an active main-agent profile that narrows the context budget
+    // (complete — provider + model — so it is a usable selection winner)
     mockLlmConfig = {
       ...structuredClone(defaultLlmConfig),
       activeProfile: "short-context",
       profiles: {
         "short-context": {
           source: "user",
+          provider: "anthropic",
+          model: "claude-opus-4-7",
           contextWindow: { maxInputTokens: 150_000 },
         },
       },

@@ -319,10 +319,11 @@ const PricingOverrideSchema = z.object({
 // ---------------------------------------------------------------------------
 
 /**
- * Fully specified LLM config. Used for `llm.default` — every knob has a
- * schema-level default, so `LLMConfigBase.parse({})` returns a complete
- * fallback object. This is essential for the loader's leaf-deletion recovery
- * path; see the comment on `ThinkingSchema` above.
+ * Fully specified LLM config: every knob has a schema-level default, so
+ * `LLMConfigBase.parse({})` returns a complete object. The resolver uses it as
+ * the code-owned base every resolved call-site config composes over (see
+ * `CODE_DEFAULT_BASE` in `llm-resolver.ts`), and profile materialization
+ * completes partial custom profiles against it.
  */
 export const LLMConfigBase = z.object({
   provider: LLMProvider.default("anthropic"),
@@ -511,7 +512,6 @@ const DefaultProviderField = DefaultProviderSchema.optional().catch(undefined);
 
 export const LLMSchema = z
   .object({
-    default: LLMConfigBase.default(LLMConfigBase.parse({})),
     profiles: z.record(z.string().min(1), ProfileEntry).default({}),
     // Presentation-only order for named profiles. The resolver ignores this;
     // clients use it to render profile pickers consistently.

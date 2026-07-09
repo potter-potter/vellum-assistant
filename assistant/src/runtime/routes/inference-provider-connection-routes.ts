@@ -325,7 +325,7 @@ function handleDeleteConnection({ pathParams = {} }: RouteHandlerArgs) {
   const { name } = pathParams;
   if (!name) throw new BadRequestError("name is required");
 
-  // Existence check first so a stale `llm.default.provider_connection`
+  // Existence check first so a stale profile `provider_connection`
   // reference to a missing connection returns 404 (not 409).
   const existing = getConnection(getDb(), name);
   if (!existing) {
@@ -344,17 +344,6 @@ function handleDeleteConnection({ pathParams = {} }: RouteHandlerArgs) {
   }
 
   const config = getConfigReadOnly();
-
-  // llm.default carries provider_connection (LLMConfigBase).
-  if (
-    (config.llm?.default as Record<string, unknown> | undefined)
-      ?.provider_connection === name
-  ) {
-    throw new ConflictError(
-      `Connection "${name}" is referenced by llm.default. Update llm.default.provider_connection before deleting.`,
-      { referencedBy: ["llm.default"] },
-    );
-  }
 
   // llm.defaultProvider: guards both the resolved connection name (explicit
   // `connectionName` or the `<provider>-personal` convention) and the case

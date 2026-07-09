@@ -7,7 +7,7 @@
  * Without this wrapper the conversation-level provider transport is fixed at
  * construction time, so a per-call-site `llm.callSites.<id>.provider`
  * override only affects the request *metadata* the downstream client sees —
- * the actual HTTP transport still belongs to `llm.default.provider`. That
+ * the actual HTTP transport still belongs to the default provider. That
  * means routing decisions like "send `memoryRetrieval` calls to OpenAI even
  * though the main agent runs on Anthropic" silently fail.
  *

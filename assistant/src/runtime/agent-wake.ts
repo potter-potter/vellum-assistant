@@ -65,8 +65,6 @@ import type {
 import type { InterfaceId } from "../channels/types.js";
 import { resolveEffectiveContextWindow } from "../config/llm-context-resolution.js";
 import {
-  isOverrideOrDefaultResolutionEnabled,
-  resolveDefaultProfileKey,
   resolveProfilelessModelKey,
   selectWinningProfile,
 } from "../config/llm-resolver.js";
@@ -733,21 +731,14 @@ export async function wakeAgentForOpportunity(
       overrideProfile,
       forceOverrideProfile,
     });
-    // Same winner-selection sourcing as the agent loop's key: under
-    // override-or-default semantics a hand-mirrored chain would disagree
-    // with dispatch (a non-forced override now wins on every call site).
+    // Same winner-selection sourcing as the agent loop's key: a hand-mirrored
+    // chain would disagree with dispatch (a non-forced override wins on every
+    // call site).
     const modelProfileKey =
-      (isOverrideOrDefaultResolutionEnabled()
-        ? selectWinningProfile(callSite, config.llm, {
-            ...(overrideProfile != null ? { overrideProfile } : {}),
-            selectionSeed: conversationId,
-          }).profileName
-        : ((forceOverrideProfile || callSite === "mainAgent"
-            ? overrideProfile
-            : undefined) ??
-          resolveDefaultProfileKey(callSite, config.llm) ??
-          overrideProfile ??
-          resolveDefaultProfileKey("mainAgent", config.llm))) ??
+      selectWinningProfile(callSite, config.llm, {
+        ...(overrideProfile != null ? { overrideProfile } : {}),
+        selectionSeed: conversationId,
+      }).profileName ??
       resolveProfilelessModelKey(callSite, config.llm, {
         ...(overrideProfile != null ? { overrideProfile } : {}),
         ...(forceOverrideProfile ? { forceOverrideProfile: true } : {}),

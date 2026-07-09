@@ -32,13 +32,7 @@ const conversationDiskViewRealSnapshot = {
   ) as Record<string, unknown>),
 };
 let mockUiConfig: { userTimezone?: string; detectedTimezone?: string } = {};
-// Disable the catalog default so resolution lands on llm.default.
-const disabledCatalogDefaultProfiles: Record<string, unknown> = {
-  balanced: { source: "managed", status: "disabled" },
-};
-let mockLlmProfiles: Record<string, unknown> = {
-  ...disabledCatalogDefaultProfiles,
-};
+let mockLlmProfiles: Record<string, unknown> = {};
 let mockLlmActiveProfile: string | undefined;
 
 // ── Module mocks (must precede imports of the module under test) ─────
@@ -65,35 +59,10 @@ mock.module("../util/logger.js", () => ({
 mock.module("../config/loader.js", () => ({
   getConfig: () => ({
     llm: {
-      default: {
-        provider: "mock-provider",
-        model: "mock-model",
-        maxTokens: 4096,
-        effort: "max" as const,
-        speed: "standard" as const,
-        temperature: null,
-        thinking: { enabled: false, streamThinking: true },
-        contextWindow: {
-          enabled: true,
-          maxInputTokens: 100000,
-          targetBudgetRatio: 0.3,
-          compactThreshold: 0.8,
-          summaryBudgetRatio: 0.05,
-          overflowRecovery: {
-            enabled: true,
-            safetyMarginRatio: 0.05,
-            maxAttempts: 3,
-            interactiveLatestTurnCompression: "summarize",
-            nonInteractiveLatestTurnCompression: "truncate",
-          },
-        },
-      },
       profiles: mockLlmProfiles,
-      // The call-site tweak applies under BOTH resolution semantics (the
-      // legacy cascade layers it over llm.default; override-or-default
-      // applies it over the winner), so the small context window that the
-      // overflow/compaction tests depend on holds regardless of the
-      // override-or-default-resolution flag.
+      // The call-site tweak applies last over whichever profile wins
+      // selection, so the small context window the overflow/compaction tests
+      // depend on holds regardless of the winning profile.
       callSites: {
         mainAgent: {
           contextWindow: {
@@ -868,7 +837,7 @@ function makeCompactionResult(
 
 beforeEach(() => {
   mockUiConfig = {};
-  mockLlmProfiles = { ...disabledCatalogDefaultProfiles };
+  mockLlmProfiles = {};
   mockLlmActiveProfile = undefined;
   mockEstimateTokens = 1000;
   mockReducerStepFn = null;
@@ -939,12 +908,20 @@ beforeEach(() => {
 describe("session-agent-loop", () => {
   describe("user-prompt-submit hook failures", () => {
     test("passes the effective profile to hooks even when it was already announced", async () => {
+      // Both profiles are complete (provider + model) so each is a usable
+      // winner: the conversation's pinned "balanced" must win selection over
+      // the workspace-active "quality".
       mockLlmProfiles = {
         balanced: {
           label: "Balanced",
+          provider: "fireworks",
           model: "accounts/fireworks/models/glm-5p2",
         },
-        quality: { label: "Quality", model: "claude-opus-4-8" },
+        quality: {
+          label: "Quality",
+          provider: "anthropic",
+          model: "claude-opus-4-8",
+        },
       };
       mockLlmActiveProfile = "quality";
       const observedProfileKeys: string[] = [];

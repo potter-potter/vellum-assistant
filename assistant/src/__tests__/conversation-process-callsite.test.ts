@@ -10,16 +10,7 @@
  * (heartbeat, filing, scheduler) pass an explicit `callSite` so
  * `RetryProvider` resolves their per-call config from `llm.callSites.<id>`.
  */
-import { beforeAll, describe, expect, mock, test } from "bun:test";
-
-import { setOverridesForTesting } from "./feature-flag-test-helpers.js";
-
-// Legacy-shaped fixtures (llm.default-centric resolution): pinned to the
-// flag-off cascade. Override-or-default (flag-on) semantics are pinned by
-// llm-resolver-override-or-default.test.ts and its companion suites.
-beforeAll(() => {
-  setOverridesForTesting({ "override-or-default-resolution": false });
-});
+import { describe, expect, mock, test } from "bun:test";
 
 import { CompactionCircuit } from "../agent/compaction-circuit.js";
 import type { Message, ProviderResponse } from "../providers/types.js";
@@ -69,35 +60,35 @@ mock.module("../config/loader.js", () => ({
   getConfig: () => ({
     ui: {},
     llm: {
-      default: {
-        provider: "anthropic",
-        provider_connection: "anthropic-conn",
-        model: "claude-opus-4-6",
-        maxTokens: 4096,
-        effort: "max" as const,
-        speed: "standard" as const,
-        temperature: null,
-        thinking: { enabled: false, streamThinking: true },
-        contextWindow: {
-          enabled: true,
-          maxInputTokens: 100000,
-          targetBudgetRatio: 0.3,
-          compactThreshold: 0.8,
-          summaryBudgetRatio: 0.05,
-          overflowRecovery: {
+      profiles: {},
+      // The main-agent call-site tweak applies last over the winning profile,
+      // so it fully pins the provider/connection/model these tests run under.
+      callSites: {
+        mainAgent: {
+          provider: "anthropic",
+          provider_connection: "anthropic-conn",
+          model: "claude-opus-4-6",
+          maxTokens: 4096,
+          effort: "max" as const,
+          speed: "standard" as const,
+          temperature: null,
+          thinking: { enabled: false, streamThinking: true },
+          contextWindow: {
             enabled: true,
-            safetyMarginRatio: 0.05,
-            maxAttempts: 3,
-            interactiveLatestTurnCompression: "summarize",
-            nonInteractiveLatestTurnCompression: "truncate",
+            maxInputTokens: 100000,
+            targetBudgetRatio: 0.3,
+            compactThreshold: 0.8,
+            summaryBudgetRatio: 0.05,
+            overflowRecovery: {
+              enabled: true,
+              safetyMarginRatio: 0.05,
+              maxAttempts: 3,
+              interactiveLatestTurnCompression: "summarize",
+              nonInteractiveLatestTurnCompression: "truncate",
+            },
           },
         },
       },
-      profiles: {
-        // Disable the catalog default so resolution lands on llm.default.
-        balanced: { source: "managed", status: "disabled" },
-      },
-      callSites: {},
       pricingOverrides: [],
     },
     rateLimit: { maxRequestsPerMinute: 0 },

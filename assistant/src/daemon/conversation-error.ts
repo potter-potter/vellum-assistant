@@ -153,7 +153,6 @@ const STREAMING_ERROR_PATTERNS = [
   /stream has ended.*this shouldn't happen/i,
 ];
 
-
 const CANCEL_PATTERNS = [/abort/i, /cancel/i];
 
 /**
@@ -285,7 +284,7 @@ export function classifyConversationError(
 }
 
 /**
- * Internal throw sites use sentinel pseudo-names (`<llm.default>`,
+ * Internal throw sites use sentinel pseudo-names (`<default>`,
  * `<resolved-callsite>`) when no real connection row is involved; those must
  * not render as literal connection names.
  */
@@ -753,8 +752,8 @@ function visionNotSupportedClassification(): Omit<
  * Build a user-facing message that names the exact profile / connection
  * to fix when one is known, falling back to a generic phrase otherwise.
  * Profile is preferred because that's the entity the user picks in the
- * chat picker; connection is shown when no profile is in play (e.g.
- * `llm.default` direct dispatch) or as a parenthetical when both differ.
+ * chat picker; connection is shown when no profile is in play (e.g. the
+ * profileless anchor dispatch) or as a parenthetical when both differ.
  */
 function describeAttribution(
   attribution: ConversationErrorAttribution | undefined,

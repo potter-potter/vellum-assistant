@@ -245,7 +245,8 @@ function attachCreateSubcommand(connections: Command): void {
           );
         } else {
           process.stdout.write(
-            `Created connection "${conn.name}" (provider=${conn.provider}, auth=${formatAuth(conn.auth)})\n`,
+            `Created connection "${conn.name}" (provider=${conn.provider}, auth=${formatAuth(conn.auth)})\n` +
+              `Verify it works: point a profile's provider_connection at "${conn.name}", then run: assistant inference send --profile <profile> "Reply with OK"\n`,
           );
         }
       },
@@ -298,7 +299,8 @@ function attachUpdateSubcommand(connections: Command): void {
           );
         } else {
           process.stdout.write(
-            `Updated connection "${name}" auth to ${formatAuth(conn.auth)}\n`,
+            `Updated connection "${name}" auth to ${formatAuth(conn.auth)}\n` +
+              `Verify it works: assistant inference send --profile <profile-using-this-connection> "Reply with OK"\n`,
           );
         }
       },
@@ -499,7 +501,11 @@ Examples:
   $ assistant inference providers connections create anthropic-personal \\
       --provider anthropic --auth api_key --credential credential/anthropic/api_key
   $ assistant inference providers connections update anthropic-personal --auth platform
-  $ assistant inference providers connections delete anthropic-personal`,
+  $ assistant inference providers connections delete anthropic-personal
+
+After creating or updating a connection, validate it with a live call through
+a profile that uses it:
+  $ assistant inference send --profile <profile> "Reply with OK"`,
   );
 
   attachListSubcommand(connections);

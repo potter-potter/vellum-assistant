@@ -235,7 +235,8 @@ export function registerInferenceCommand(program: Command): void {
         "after",
         `
 The inference command group sends requests to your configured LLM provider.
-The provider is resolved from your assistant config (llm.default.provider).
+The provider is resolved from your assistant config (active inference profile
+and llm.defaultProvider).
 
 Examples:
   $ assistant inference send "What is the capital of France?"
@@ -260,7 +261,8 @@ Examples:
     `
 The llm command group is a shorthand for 'assistant inference send'. It sends
 requests to your configured LLM provider, resolved from your assistant config
-(llm.default.provider). For profile session management, use 'assistant inference session'.
+(active inference profile and llm.defaultProvider). For profile session
+management, use 'assistant inference session'.
 
 Examples:
   $ assistant llm send "What is the capital of France?"

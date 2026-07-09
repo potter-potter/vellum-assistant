@@ -594,8 +594,9 @@ describe("loadConfig startup behavior", () => {
     mergeDefaultConfigAndSeedInferenceProfiles();
     const config = loadConfig();
 
-    expect(config.llm.default.provider).toBe("anthropic");
-    expect(config.llm.default.model).toBe("claude-opus-4-7");
+    // `llm.default` is not part of the schema — the overlay blob stays on
+    // disk as inert user intent but never reaches the parsed config.
+    expect((config.llm as Record<string, unknown>).default).toBeUndefined();
     // Off-platform: user profiles are active, backed by the user's API key.
     expect(config.llm.activeProfile).toBe("custom-balanced");
     expect(config.llm.profiles["custom-balanced"]?.provider).toBe("anthropic");

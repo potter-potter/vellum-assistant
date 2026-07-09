@@ -5,21 +5,12 @@
  * tool use."
  *
  * This is the root cause of repeated failures in memory graph operations
- * (extraction, narrative, pattern-scan, consolidation) when the user's default
- * LLM config has `thinking.enabled: true` and the call site uses forced
+ * (extraction, narrative, pattern-scan, consolidation) when the resolved LLM
+ * config has `thinking.enabled: true` and the call site uses forced
  * `tool_choice` without explicitly disabling thinking.
  */
 
-import { beforeAll, beforeEach, describe, expect, mock, test } from "bun:test";
-
-import { setOverridesForTesting } from "./feature-flag-test-helpers.js";
-
-// Legacy-shaped fixtures (llm.default-centric resolution): pinned to the
-// flag-off cascade. Override-or-default (flag-on) semantics are pinned by
-// llm-resolver-override-or-default.test.ts and its companion suites.
-beforeAll(() => {
-  setOverridesForTesting({ "override-or-default-resolution": false });
-});
+import { beforeEach, describe, expect, mock, test } from "bun:test";
 
 mock.module("../util/logger.js", () => ({
   getLogger: () =>
@@ -83,13 +74,13 @@ const userMessage: Message = {
 describe("retry normalization: thinking + forced tool_choice", () => {
   test("strips thinking when tool_choice forces a specific tool (type: 'tool')", async () => {
     setLlmConfig({
-      default: {
-        provider: "anthropic",
-        model: "claude-opus-4-7",
-        thinking: { enabled: true, streamThinking: true },
+      callSites: {
+        memoryExtraction: {
+          provider: "anthropic",
+          model: "claude-opus-4-7",
+          thinking: { enabled: true, streamThinking: true },
+        },
       },
-      // Disable the catalog default so resolution lands on llm.default.
-      profiles: { "cost-optimized": { source: "managed", status: "disabled" } },
     });
     const { provider, lastConfig } = makePipeline("anthropic");
     await provider.sendMessage([userMessage], {
@@ -109,13 +100,13 @@ describe("retry normalization: thinking + forced tool_choice", () => {
 
   test("strips thinking when tool_choice type is 'any'", async () => {
     setLlmConfig({
-      default: {
-        provider: "anthropic",
-        model: "claude-opus-4-7",
-        thinking: { enabled: true },
+      callSites: {
+        memoryExtraction: {
+          provider: "anthropic",
+          model: "claude-opus-4-7",
+          thinking: { enabled: true },
+        },
       },
-      // Disable the catalog default so resolution lands on llm.default.
-      profiles: { "cost-optimized": { source: "managed", status: "disabled" } },
     });
     const { provider, lastConfig } = makePipeline("anthropic");
     await provider.sendMessage([userMessage], {
@@ -129,13 +120,13 @@ describe("retry normalization: thinking + forced tool_choice", () => {
 
   test("preserves thinking when tool_choice type is 'auto'", async () => {
     setLlmConfig({
-      default: {
-        provider: "anthropic",
-        model: "claude-opus-4-7",
-        thinking: { enabled: true },
+      callSites: {
+        memoryExtraction: {
+          provider: "anthropic",
+          model: "claude-opus-4-7",
+          thinking: { enabled: true },
+        },
       },
-      // Disable the catalog default so resolution lands on llm.default.
-      profiles: { "cost-optimized": { source: "managed", status: "disabled" } },
     });
     const { provider, lastConfig } = makePipeline("anthropic");
     await provider.sendMessage([userMessage], {
@@ -149,13 +140,13 @@ describe("retry normalization: thinking + forced tool_choice", () => {
 
   test("preserves thinking when no tool_choice is set", async () => {
     setLlmConfig({
-      default: {
-        provider: "anthropic",
-        model: "claude-opus-4-7",
-        thinking: { enabled: true },
+      callSites: {
+        memoryExtraction: {
+          provider: "anthropic",
+          model: "claude-opus-4-7",
+          thinking: { enabled: true },
+        },
       },
-      // Disable the catalog default so resolution lands on llm.default.
-      profiles: { "cost-optimized": { source: "managed", status: "disabled" } },
     });
     const { provider, lastConfig } = makePipeline("anthropic");
     await provider.sendMessage([userMessage], {
@@ -195,13 +186,13 @@ describe("retry normalization: thinking + forced tool_choice", () => {
 
   test("preserves resolved thinking: disabled with forced tool_choice", async () => {
     setLlmConfig({
-      default: {
-        provider: "anthropic",
-        model: "claude-opus-4-7",
-        thinking: { enabled: false },
+      callSites: {
+        memoryExtraction: {
+          provider: "anthropic",
+          model: "claude-opus-4-7",
+          thinking: { enabled: false },
+        },
       },
-      // Disable the catalog default so resolution lands on llm.default.
-      profiles: { "cost-optimized": { source: "managed", status: "disabled" } },
     });
     const { provider, lastConfig } = makePipeline("anthropic");
     await provider.sendMessage([userMessage], {
@@ -215,13 +206,13 @@ describe("retry normalization: thinking + forced tool_choice", () => {
 
   test("strips thinking for openrouter with anthropic model and forced tool_choice", async () => {
     setLlmConfig({
-      default: {
-        provider: "openrouter",
-        model: "anthropic/claude-opus-4.7",
-        thinking: { enabled: true },
+      callSites: {
+        memoryExtraction: {
+          provider: "openrouter",
+          model: "anthropic/claude-opus-4.7",
+          thinking: { enabled: true },
+        },
       },
-      // Disable the catalog default so resolution lands on llm.default.
-      profiles: { "cost-optimized": { source: "managed", status: "disabled" } },
     });
     const { provider, lastConfig } = makePipeline("openrouter");
     await provider.sendMessage([userMessage], {
@@ -235,13 +226,13 @@ describe("retry normalization: thinking + forced tool_choice", () => {
 
   test("preserves thinking for openrouter with non-anthropic model and forced tool_choice", async () => {
     setLlmConfig({
-      default: {
-        provider: "openrouter",
-        model: "x-ai/grok-3-mini",
-        thinking: { enabled: true },
+      callSites: {
+        memoryExtraction: {
+          provider: "openrouter",
+          model: "x-ai/grok-3-mini",
+          thinking: { enabled: true },
+        },
       },
-      // Disable the catalog default so resolution lands on llm.default.
-      profiles: { "cost-optimized": { source: "managed", status: "disabled" } },
     });
     const { provider, lastConfig } = makePipeline("openrouter");
     await provider.sendMessage([userMessage], {
@@ -257,13 +248,13 @@ describe("retry normalization: thinking + forced tool_choice", () => {
 
   test("strips thinking for vercel-ai-gateway with anthropic model and forced tool_choice", async () => {
     setLlmConfig({
-      default: {
-        provider: "vercel-ai-gateway",
-        model: "anthropic/claude-opus-4.6",
-        thinking: { enabled: true },
+      callSites: {
+        memoryExtraction: {
+          provider: "vercel-ai-gateway",
+          model: "anthropic/claude-opus-4.6",
+          thinking: { enabled: true },
+        },
       },
-      // Disable the catalog default so resolution lands on llm.default.
-      profiles: { "cost-optimized": { source: "managed", status: "disabled" } },
     });
     const { provider, lastConfig } = makePipeline("vercel-ai-gateway");
     await provider.sendMessage([userMessage], {
@@ -277,13 +268,13 @@ describe("retry normalization: thinking + forced tool_choice", () => {
 
   test("preserves thinking for vercel-ai-gateway with non-anthropic model and forced tool_choice", async () => {
     setLlmConfig({
-      default: {
-        provider: "vercel-ai-gateway",
-        model: "xai/grok-4.3",
-        thinking: { enabled: true },
+      callSites: {
+        memoryExtraction: {
+          provider: "vercel-ai-gateway",
+          model: "xai/grok-4.3",
+          thinking: { enabled: true },
+        },
       },
-      // Disable the catalog default so resolution lands on llm.default.
-      profiles: { "cost-optimized": { source: "managed", status: "disabled" } },
     });
     const { provider, lastConfig } = makePipeline("vercel-ai-gateway");
     await provider.sendMessage([userMessage], {

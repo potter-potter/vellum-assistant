@@ -11,18 +11,7 @@
  * makes per-conversation pinned profiles (PR 6+) work.
  */
 
-import { beforeAll, beforeEach, describe, expect, mock, test } from "bun:test";
-
-import { setOverridesForTesting } from "./feature-flag-test-helpers.js";
-
-// These suites exercise override-profile PLUMBING through legacy-shaped
-// fixtures (llm.default-centric, no defaultProvider). Pinned to the
-// flag-off cascade; override-or-default resolution semantics are pinned by
-// llm-resolver-override-or-default.test.ts and the inference-profile loop
-// suite.
-beforeAll(() => {
-  setOverridesForTesting({ "override-or-default-resolution": false });
-});
+import { beforeEach, describe, expect, mock, test } from "bun:test";
 
 import { makeMockLogger } from "./helpers/mock-logger.js";
 
@@ -117,7 +106,6 @@ describe("SendMessageOptions.config.overrideProfile", () => {
 
   test("RetryProvider resolves model from named profile when overrideProfile is set", async () => {
     setLlmConfig({
-      default: { provider: "anthropic", model: "claude-opus-4-7" },
       profiles: {
         fast: { provider: "anthropic", model: "claude-haiku-4-5-20251001" },
       },
@@ -140,7 +128,8 @@ describe("SendMessageOptions.config.overrideProfile", () => {
       config: { callSite: "mainAgent", overrideProfile: "fast" },
     });
 
-    // The override profile's model should win over `llm.default.model`.
+    // The override profile wins resolution, so its model is what lands on
+    // the wire config.
     expect(captured?.model).toBe("claude-haiku-4-5-20251001");
     // `overrideProfile` is a routing key — it must not leak to the provider.
     expect(captured?.overrideProfile).toBeUndefined();
@@ -150,7 +139,6 @@ describe("SendMessageOptions.config.overrideProfile", () => {
 
   test("CallSiteRoutingProvider switches transport when overrideProfile changes the provider (via provider_connection)", async () => {
     setLlmConfig({
-      default: { provider: "anthropic", model: "claude-opus-4-7" },
       profiles: {
         fast: {
           provider: "openai",
@@ -193,7 +181,11 @@ describe("SendMessageOptions.config.overrideProfile", () => {
 
   test("missing overrideProfile name silently falls through to base resolution", async () => {
     setLlmConfig({
-      default: { provider: "anthropic", model: "claude-opus-4-7" },
+      // The call-site tweak applies last in resolution, so it pins the model
+      // base resolution lands on when the override name doesn't resolve.
+      callSites: {
+        mainAgent: { provider: "anthropic", model: "claude-opus-4-7" },
+      },
       profiles: {
         fast: { provider: "anthropic", model: "claude-haiku-4-5-20251001" },
       },
@@ -216,17 +208,17 @@ describe("SendMessageOptions.config.overrideProfile", () => {
       config: { callSite: "mainAgent", overrideProfile: "does-not-exist" },
     });
 
-    // Falls through to `llm.default.model` since the named profile isn't found.
+    // Falls through to base resolution (call-site tweak applied over the
+    // default winner) since the named profile isn't found.
     expect(captured?.model).toBe("claude-opus-4-7");
   });
 
   test("absent overrideProfile leaves prior resolution behavior intact", async () => {
     setLlmConfig({
-      default: { provider: "anthropic", model: "claude-opus-4-7" },
+      callSites: {
+        mainAgent: { provider: "anthropic", model: "claude-opus-4-7" },
+      },
       profiles: {
-        // Disable the catalog default so mainAgent's base resolution lands on
-        // `llm.default` rather than the code catalog's `balanced`.
-        balanced: { source: "managed", status: "disabled" },
         fast: { provider: "anthropic", model: "claude-haiku-4-5-20251001" },
       },
     });
@@ -305,11 +297,13 @@ describe("SendMessageOptions.config.forceOverrideProfile", () => {
     });
   });
 
-  test("forceOverrideProfile floats the override above a call-site profile pin", async () => {
-    // The advisor scenario in miniature: the `inference` call site is pinned to
-    // a cheap profile, but a caller forces a stronger profile for its own send.
+  test("the override profile outranks a call-site profile pin, forced or not", async () => {
+    // The advisor scenario in miniature: the `inference` call site is pinned
+    // to a cheap profile, but a caller supplies a stronger profile for its
+    // own send. Under single-winner resolution the override sits at the top
+    // of the selection chain for every call site, so it wins with or without
+    // `forceOverrideProfile` (the flag is a no-op kept for API compat).
     setLlmConfig({
-      default: { provider: "anthropic", model: "claude-opus-4-7" },
       profiles: {
         cheap: { provider: "anthropic", model: "claude-haiku-4-5-20251001" },
         strong: { provider: "anthropic", model: "claude-opus-4-8" },
@@ -340,10 +334,11 @@ describe("SendMessageOptions.config.forceOverrideProfile", () => {
       return captured;
     };
 
-    // Without the flag, the call-site pin (`cheap`) outranks `overrideProfile`.
-    expect((await send(false))?.model).toBe("claude-haiku-4-5-20251001");
+    // Without the flag, the override (`strong`) already wins over the
+    // call-site pin (`cheap`).
+    expect((await send(false))?.model).toBe("claude-opus-4-8");
 
-    // With the flag, the forced `strong` profile wins over the call-site pin.
+    // With the flag, the result is identical — forcing changes nothing.
     const forced = await send(true);
     expect(forced?.model).toBe("claude-opus-4-8");
     // The routing keys are stripped before the provider wire request.

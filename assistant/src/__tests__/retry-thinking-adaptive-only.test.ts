@@ -8,16 +8,7 @@
  * disabling thinking (e.g. Opus) keep their disabled config.
  */
 
-import { beforeAll, beforeEach, describe, expect, mock, test } from "bun:test";
-
-import { setOverridesForTesting } from "./feature-flag-test-helpers.js";
-
-// Legacy-shaped fixtures (llm.default-centric resolution): pinned to the
-// flag-off cascade. Override-or-default (flag-on) semantics are pinned by
-// llm-resolver-override-or-default.test.ts and its companion suites.
-beforeAll(() => {
-  setOverridesForTesting({ "override-or-default-resolution": false });
-});
+import { beforeEach, describe, expect, mock, test } from "bun:test";
 
 mock.module("../util/logger.js", () => ({
   getLogger: () =>
@@ -80,16 +71,18 @@ const userMessage: Message = {
 
 describe("retry normalization: adaptive-only thinking models", () => {
   test("drops resolved thinking: disabled for Claude Fable", async () => {
-    // GIVEN a profile that disables thinking for an adaptive-only Fable model
+    // GIVEN a call-site config that disables thinking for an adaptive-only
+    // Fable model (the call-site tweak is applied last, so it determines the
+    // resolved provider/model/thinking)
     setLlmConfig({
-      default: {
-        provider: "anthropic",
-        model: "claude-fable-5",
-        thinking: { enabled: false },
-        effort: "high",
+      callSites: {
+        memoryExtraction: {
+          provider: "anthropic",
+          model: "claude-fable-5",
+          thinking: { enabled: false },
+          effort: "high",
+        },
       },
-      // Disable the catalog default so resolution lands on llm.default.
-      profiles: { "cost-optimized": { source: "managed", status: "disabled" } },
     });
     const { provider, lastConfig } = makePipeline("anthropic");
 
@@ -122,15 +115,16 @@ describe("retry normalization: adaptive-only thinking models", () => {
   });
 
   test("drops disabled thinking for OpenRouter-proxied Fable", async () => {
-    // GIVEN a profile disabling thinking on the OpenRouter-proxied Fable id
+    // GIVEN a call-site config disabling thinking on the OpenRouter-proxied
+    // Fable id
     setLlmConfig({
-      default: {
-        provider: "openrouter",
-        model: "anthropic/claude-fable-5",
-        thinking: { enabled: false },
+      callSites: {
+        memoryExtraction: {
+          provider: "openrouter",
+          model: "anthropic/claude-fable-5",
+          thinking: { enabled: false },
+        },
       },
-      // Disable the catalog default so resolution lands on llm.default.
-      profiles: { "cost-optimized": { source: "managed", status: "disabled" } },
     });
     const { provider, lastConfig } = makePipeline("openrouter");
 
@@ -144,15 +138,15 @@ describe("retry normalization: adaptive-only thinking models", () => {
   });
 
   test("preserves adaptive thinking for Fable", async () => {
-    // GIVEN a profile that enables thinking for a Fable model
+    // GIVEN a call-site config that enables thinking for a Fable model
     setLlmConfig({
-      default: {
-        provider: "anthropic",
-        model: "claude-fable-5",
-        thinking: { enabled: true },
+      callSites: {
+        memoryExtraction: {
+          provider: "anthropic",
+          model: "claude-fable-5",
+          thinking: { enabled: true },
+        },
       },
-      // Disable the catalog default so resolution lands on llm.default.
-      profiles: { "cost-optimized": { source: "managed", status: "disabled" } },
     });
     const { provider, lastConfig } = makePipeline("anthropic");
 
@@ -166,15 +160,15 @@ describe("retry normalization: adaptive-only thinking models", () => {
   });
 
   test("preserves disabled thinking for models that support disabling it", async () => {
-    // GIVEN a profile disabling thinking for a non-adaptive-only model
+    // GIVEN a call-site config disabling thinking for a non-adaptive-only model
     setLlmConfig({
-      default: {
-        provider: "anthropic",
-        model: "claude-opus-4-7",
-        thinking: { enabled: false },
+      callSites: {
+        memoryExtraction: {
+          provider: "anthropic",
+          model: "claude-opus-4-7",
+          thinking: { enabled: false },
+        },
       },
-      // Disable the catalog default so resolution lands on llm.default.
-      profiles: { "cost-optimized": { source: "managed", status: "disabled" } },
     });
     const { provider, lastConfig } = makePipeline("anthropic");
 
@@ -188,16 +182,17 @@ describe("retry normalization: adaptive-only thinking models", () => {
   });
 
   test("drops non-1 temperature for Fable when thinking is disabled", async () => {
-    // GIVEN a Fable profile that disables thinking and sets a non-1 temperature
+    // GIVEN a Fable call-site config that disables thinking and sets a non-1
+    // temperature
     setLlmConfig({
-      default: {
-        provider: "anthropic",
-        model: "claude-fable-5",
-        thinking: { enabled: false },
-        temperature: 0.7,
+      callSites: {
+        memoryExtraction: {
+          provider: "anthropic",
+          model: "claude-fable-5",
+          thinking: { enabled: false },
+          temperature: 0.7,
+        },
       },
-      // Disable the catalog default so resolution lands on llm.default.
-      profiles: { "cost-optimized": { source: "managed", status: "disabled" } },
     });
     const { provider, lastConfig } = makePipeline("anthropic");
 

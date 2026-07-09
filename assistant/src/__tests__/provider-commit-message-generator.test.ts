@@ -1,16 +1,8 @@
-import { beforeAll, beforeEach, describe, expect, mock, test } from "bun:test";
-
-import { setOverridesForTesting } from "./feature-flag-test-helpers.js";
-
-// Legacy-shaped fixtures (llm.default-centric): pinned to the flag-off
-// cascade; see llm-resolver-override-or-default.test.ts for flag-on
-// resolution semantics.
-beforeAll(() => {
-  setOverridesForTesting({ "override-or-default-resolution": false });
-});
+import { afterAll, beforeEach, describe, expect, mock, test } from "bun:test";
 
 import { DEFAULT_CONFIG } from "../config/defaults.js";
 import type { AssistantConfig } from "../config/types.js";
+import { resolveConfiguredProvider as resolveConfiguredProviderImport } from "../providers/provider-send-message.js";
 import type {
   Message,
   Provider,
@@ -34,7 +26,9 @@ mock.module("../security/secure-keys.js", () => ({
 // ---------------------------------------------------------------------------
 function cloneConfig(): AssistantConfig {
   const cfg = structuredClone(DEFAULT_CONFIG);
-  cfg.llm.default.provider = "anthropic";
+  // Anchor call-site resolution on anthropic so the resolved provider for
+  // `commitMessage` (and thus the API-key preflight) targets anthropic.
+  cfg.llm.defaultProvider = { provider: "anthropic" };
   cfg.workspaceGit.commitMessageLLM = {
     ...cfg.workspaceGit.commitMessageLLM,
     enabled: true,
@@ -83,8 +77,25 @@ let resolvedProvider: {
   configuredProviderName: "anthropic",
 };
 
+// `mock.module` patches persist for the rest of the `bun test` process, so
+// the stub is armed only while this file's tests run and delegates to the
+// real implementation afterwards — later test files that exercise the real
+// dispatch path (e.g. dispatch-connection-routing.test.ts) must not see this
+// file's canned provider. The real function is snapshotted before
+// `mock.module` rebinds the import.
+const realResolveConfiguredProvider = resolveConfiguredProviderImport;
+let sendMessageMockArmed = true;
+afterAll(() => {
+  sendMessageMockArmed = false;
+});
+
 mock.module("../providers/provider-send-message.js", () => ({
-  resolveConfiguredProvider: async () => resolvedProvider,
+  resolveConfiguredProvider: async (
+    ...args: Parameters<typeof realResolveConfiguredProvider>
+  ) =>
+    sendMessageMockArmed
+      ? resolvedProvider
+      : realResolveConfiguredProvider(...args),
 }));
 
 // ---------------------------------------------------------------------------
@@ -177,11 +188,6 @@ describe("ProviderCommitMessageGenerator", () => {
   // 3c. No resolvable provider despite keys
   test('no resolvable provider with keys present → returns deterministic, reason "provider_not_initialized"', async () => {
     mockSecureKeys = { anthropic: "sk-test-key" };
-    currentConfig.llm.profiles = {
-      ...currentConfig.llm.profiles,
-      // Disable the catalog default so resolution lands on llm.default.
-      "cost-optimized": { source: "managed", status: "disabled" },
-    };
     resolvedProvider = null;
     const gen = getCommitMessageGenerator();
     const result = await gen.generateCommitMessage(baseContext, {
@@ -319,9 +325,12 @@ describe("ProviderCommitMessageGenerator", () => {
 
   // 12. Ollama (keyless provider) — passes the API-key preflight even without
   // a stored secret, then succeeds because the call-site resolver supplies
-  // the model from `llm.default`/`llm.callSites.commitMessage`.
+  // the model from `llm.callSites.commitMessage`.
   test("Ollama (keyless) — succeeds because call-site resolver supplies the model", async () => {
-    currentConfig.llm.default.provider = "ollama";
+    currentConfig.llm.callSites = {
+      ...currentConfig.llm.callSites,
+      commitMessage: { provider: "ollama" },
+    };
     mockSecureKeys = {};
     resolvedProvider = {
       provider: mockProvider,

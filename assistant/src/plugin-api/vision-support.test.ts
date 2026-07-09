@@ -12,10 +12,6 @@ interface MockProfileEntry {
 }
 
 let mockProfiles: Record<string, MockProfileEntry> = {};
-let mockDefault: { provider?: string; model?: string } = {
-  provider: "anthropic",
-  model: "claude-opus-4-6",
-};
 
 const realConfigLoader = await import("../config/loader.js");
 
@@ -24,13 +20,11 @@ mock.module("../config/loader.js", () => ({
   getConfig: () => ({
     llm: {
       profiles: mockProfiles,
-      default: mockDefault,
     },
   }),
   getConfigReadOnly: () => ({
     llm: {
       profiles: mockProfiles,
-      default: mockDefault,
     },
   }),
 }));
@@ -51,17 +45,12 @@ function profile(key: string): ModelProfileInfo {
   };
 }
 
-function setMockConfig(
-  profiles: Record<string, MockProfileEntry>,
-  def: { provider?: string; model?: string } = {},
-) {
+function setMockConfig(profiles: Record<string, MockProfileEntry>) {
   mockProfiles = profiles;
-  mockDefault = { provider: "anthropic", model: "claude-opus-4-6", ...def };
 }
 
 beforeEach(() => {
   mockProfiles = {};
-  mockDefault = { provider: "anthropic", model: "claude-opus-4-6" };
 });
 
 // ─── Tests ──────────────────────────────────────────────────────────────────
@@ -96,18 +85,16 @@ describe("doesSupportVision", () => {
     expect(doesSupportVision(profile("unknown-model"))).toBe(false);
   });
 
-  test("inherits provider from llm.default when profile only sets model", () => {
-    setMockConfig(
-      { "model-only": { model: "claude-opus-4-6" } },
-      { provider: "anthropic" },
-    );
+  test("implies the provider from the catalog when profile only sets model", () => {
+    setMockConfig({ "model-only": { model: "claude-opus-4-6" } });
     expect(doesSupportVision(profile("model-only"))).toBe(true);
   });
 
-  test("inherits model from llm.default when profile only sets provider", () => {
-    // llm.default → anthropic/claude-opus-4-6 (vision-capable)
+  test("fails safe to false for a profile without a model", () => {
+    // A model-less entry is not a usable resolution target, so vision
+    // resolution treats it as "can't show images" (caption instead).
     setMockConfig({ "provider-only": { provider: "anthropic" } });
-    expect(doesSupportVision(profile("provider-only"))).toBe(true);
+    expect(doesSupportVision(profile("provider-only"))).toBe(false);
   });
 
   test("mix profile returns true when any arm supports vision", () => {

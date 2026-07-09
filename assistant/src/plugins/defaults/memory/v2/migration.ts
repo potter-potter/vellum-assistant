@@ -543,7 +543,7 @@ export async function runMemoryV2Migration(
     params.provider ?? (await getConfiguredProvider("memoryV2Migration"));
   if (!provider) {
     throw new Error(
-      "memoryV2Migration provider unavailable — configure llm.callSites.memoryV2Migration or llm.default before re-running.",
+      "memoryV2Migration provider unavailable — configure llm.callSites.memoryV2Migration or connect a default provider before re-running.",
     );
   }
 

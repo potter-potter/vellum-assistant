@@ -17,8 +17,8 @@
  *
  * Both triggers route the agent loop through `callSite: 'analyzeConversation'`
  * so per-call provider/model selection flows through `resolveCallSiteConfig`
- * against `llm.callSites.analyzeConversation` (falling back to `llm.default`
- * when no override is set).
+ * against `llm.callSites.analyzeConversation` (falling back to the shipped
+ * call-site default when no override is set).
  */
 import { v7 as uuidv7 } from "uuid";
 

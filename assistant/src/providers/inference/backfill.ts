@@ -3,7 +3,7 @@
  * `provider` + `source` model to the new `provider_connection` model.
  *
  * Walks three locations in `llm.*` on every boot:
- *   - `llm.default`           — the base profile every dispatch falls back on
+ *   - `llm.default`           — the legacy raw base blob still present in older configs
  *   - `llm.profiles.*`        — named alternate profiles (fast/balanced/...)
  *   - `llm.callSites.*`       — per-call-site overrides with bare `provider`
  *

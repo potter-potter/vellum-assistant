@@ -39,10 +39,12 @@ const mockConfig = {
   },
   llm: {
     ...baseLlm,
-    default: {
-      ...baseLlm.default,
-      provider: "anthropic" as const,
-      model: "test-model",
+    callSites: {
+      ...baseLlm.callSites,
+      mainAgent: {
+        provider: "anthropic" as const,
+        model: "test-model",
+      },
     },
   },
 };
