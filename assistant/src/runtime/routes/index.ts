@@ -55,6 +55,7 @@ import { ROUTES as CONVERSATIONS_IMPORT_ROUTES } from "./conversations-import-ro
 import { ROUTES as CREDENTIAL_PROMPT_ROUTES } from "./credential-prompt-routes.js";
 import { ROUTES as CREDENTIAL_REQUEST_ROUTES } from "./credential-request-routes.js";
 import { ROUTES as CREDENTIAL_ROUTES } from "./credential-routes.js";
+import { ROUTES as DB_ROUTES } from "./db-routes.js";
 import { ROUTES as DEBUG_BASH_ROUTES } from "./debug-bash-routes.js";
 import { ROUTES as DEBUG_ROUTES } from "./debug-routes.js";
 import { ROUTES as DEFAULT_PROVIDER_ROUTES } from "./default-provider-routes.js";
@@ -166,6 +167,7 @@ export const ROUTES: RouteDefinition[] = [
   ...BACKGROUND_WAKE_ROUTES,
   ...BACKGROUND_TOOL_ROUTES,
   ...BACKUP_ROUTES,
+  ...DB_ROUTES,
   ...BOOKMARK_ROUTES,
   ...CACHE_ROUTES,
   ...CALL_ROUTES,

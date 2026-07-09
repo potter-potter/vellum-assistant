@@ -12,6 +12,7 @@
 import type { Command } from "commander";
 
 import { registerCommand } from "../../lib/register-command.js";
+import { registerDbRefresh } from "./refresh.js";
 import { registerDbRepair } from "./repair.js";
 import { registerDbStatus } from "./status.js";
 
@@ -24,6 +25,7 @@ export function registerDbCommand(program: Command): void {
       db.option("--json", "Machine-readable compact JSON output");
       registerDbStatus(db);
       registerDbRepair(db);
+      registerDbRefresh(db);
     },
   });
 }

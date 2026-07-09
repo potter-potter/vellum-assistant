@@ -9879,6 +9879,44 @@ paths:
                 required:
                   - backend
                 additionalProperties: false
+  /v1/db/refresh:
+    post:
+      operationId: db_refresh_post
+      summary: Close and reopen all SQLite database connections
+      description:
+        Closes the daemon's cached SQLite singletons (main, logs, memory, telemetry) and reopens them against the
+        current files on disk. Use after replacing a corrupt or restored database file while the daemon is running.
+      tags:
+        - system
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  connections:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                        ok:
+                          type: boolean
+                        error:
+                          type: string
+                      required:
+                        - name
+                        - ok
+                      additionalProperties: false
+                required:
+                  - ok
+                  - connections
+                additionalProperties: false
   /v1/debug:
     get:
       operationId: debug_get
