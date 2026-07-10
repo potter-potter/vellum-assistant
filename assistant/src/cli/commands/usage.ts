@@ -7,22 +7,14 @@ import { log } from "../logger.js";
 // ── Formatting helpers ───────────────────────────────────────────
 
 function formatCost(usd: number): string {
-  if (usd === 0) {
-    return "$0.00";
-  }
-  if (usd < 0.01) {
-    return `$${usd.toFixed(6)}`;
-  }
+  if (usd === 0) return "$0.00";
+  if (usd < 0.01) return `$${usd.toFixed(6)}`;
   return `$${usd.toFixed(2)}`;
 }
 
 function formatTokens(count: number): string {
-  if (count >= 1_000_000) {
-    return `${(count / 1_000_000).toFixed(1)}M`;
-  }
-  if (count >= 1_000) {
-    return `${(count / 1_000).toFixed(1)}k`;
-  }
+  if (count >= 1_000_000) return `${(count / 1_000_000).toFixed(1)}M`;
+  if (count >= 1_000) return `${(count / 1_000).toFixed(1)}k`;
   return String(count);
 }
 
@@ -242,10 +234,6 @@ Examples:
       ] as const;
       const toOption = ["--to <epoch_ms>", "End of range (epoch ms)"] as const;
       const jsonOption = ["--json", "Output raw JSON"] as const;
-      const scheduleOption = [
-        "--schedule <id>",
-        "Filter to a schedule id; attributes usage by that schedule's cron run windows",
-      ] as const;
 
       usage
         .command("totals", { isDefault: true })
@@ -253,7 +241,6 @@ Examples:
         .option(...rangeOption)
         .option(...fromOption)
         .option(...toOption)
-        .option(...scheduleOption)
         .option(...jsonOption)
         .addHelpText(
           "after",
@@ -264,13 +251,9 @@ within the time range.
 Columns: estimated cost, LLM call count, input/output tokens, cache
 creation/read tokens, unpriced event count (if any).
 
-Pass --schedule <id> to restrict totals to a single schedule's cron run
-windows.
-
 Examples:
   $ assistant usage totals
   $ assistant usage totals --range all
-  $ assistant usage totals --schedule sched-abc123
   $ assistant usage totals --from 1709856000000 --to 1709942400000`,
         )
         .action(
@@ -278,12 +261,11 @@ Examples:
             range: string;
             from?: string;
             to?: string;
-            schedule?: string;
             json?: boolean;
           }) => {
             const { from, to } = resolveRange(opts);
             const response = await cliIpcCall<UsageTotals>("usage_totals", {
-              queryParams: buildUsageQueryParams(from, to, opts.schedule),
+              queryParams: { from: String(from), to: String(to) },
             });
             if (!response.ok) {
               return exitFromIpcResult(response);
@@ -303,7 +285,6 @@ Examples:
         .option(...rangeOption)
         .option(...fromOption)
         .option(...toOption)
-        .option(...scheduleOption)
         .option(...jsonOption)
         .addHelpText(
           "after",
@@ -311,13 +292,9 @@ Examples:
 Shows one row per day (UTC) with input tokens, output tokens, estimated
 cost, and LLM call count.
 
-Pass --schedule <id> to restrict the breakdown to a single schedule's cron
-run windows.
-
 Examples:
   $ assistant usage daily
   $ assistant usage daily --range week
-  $ assistant usage daily --schedule sched-abc123
   $ assistant usage daily --range month --json`,
         )
         .action(
@@ -325,13 +302,12 @@ Examples:
             range: string;
             from?: string;
             to?: string;
-            schedule?: string;
             json?: boolean;
           }) => {
             const { from, to } = resolveRange(opts);
             const response = await cliIpcCall<{ buckets: UsageDayBucket[] }>(
               "usage_daily",
-              { queryParams: buildUsageQueryParams(from, to, opts.schedule) },
+              { queryParams: { from: String(from), to: String(to) } },
             );
             if (!response.ok) {
               return exitFromIpcResult(response);
@@ -353,7 +329,6 @@ Examples:
         .option(...rangeOption)
         .option(...fromOption)
         .option(...toOption)
-        .option(...scheduleOption)
         .option(...jsonOption)
         .option(
           "-g, --group-by <dimension>",
@@ -376,15 +351,11 @@ Grouping dimensions:
 Shows one row per group with input/output tokens, estimated cost, and
 call count. Rows are sorted by cost descending.
 
-Pass --schedule <id> to restrict the breakdown to a single schedule's cron
-run windows.
-
 Examples:
   $ assistant usage breakdown
   $ assistant usage breakdown --group-by call_site
   $ assistant usage breakdown --group-by inference_profile
   $ assistant usage breakdown --group-by provider
-  $ assistant usage breakdown --schedule sched-abc123
   $ assistant usage breakdown --group-by actor --range week`,
         )
         .action(
@@ -392,7 +363,6 @@ Examples:
             range: string;
             from?: string;
             to?: string;
-            schedule?: string;
             json?: boolean;
             groupBy: string;
           }) => {
@@ -408,7 +378,8 @@ Examples:
               breakdown: UsageGroupBreakdown[];
             }>("usage_breakdown", {
               queryParams: {
-                ...buildUsageQueryParams(from, to, opts.schedule),
+                from: String(from),
+                to: String(to),
                 groupBy: opts.groupBy,
               },
             });
@@ -425,25 +396,6 @@ Examples:
         );
     },
   });
-}
-
-/**
- * Build the shared usage query params, including scheduleId only when a
- * schedule filter is provided.
- */
-function buildUsageQueryParams(
-  from: number,
-  to: number,
-  schedule?: string,
-): Record<string, string> {
-  const queryParams: Record<string, string> = {
-    from: String(from),
-    to: String(to),
-  };
-  if (schedule !== undefined) {
-    queryParams.scheduleId = schedule;
-  }
-  return queryParams;
 }
 
 /** Resolve the time range from commander options. */
