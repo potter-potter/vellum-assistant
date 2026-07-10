@@ -9,12 +9,15 @@ import {
 import { type MouseEvent, useCallback, useState } from "react";
 
 import { AppPreviewThumbnail } from "@/components/app-card";
+import { SwipeActionReveal } from "@/components/swipe-action-reveal";
 import { useIsMobile } from "@/hooks/use-is-mobile";
 import type { AppSummary } from "@/types/app-types";
 import { getCachedAppHtml } from "@/utils/app-html-cache";
 import { formatFriendlyDate } from "@/utils/format-date";
 import { cn } from "@/utils/misc";
 import { shareApp } from "@/utils/share-app";
+import { isPointerCoarse } from "@/utils/pointer";
+import type { SwipeAction } from "@/hooks/use-swipe-to-reveal";
 import {
     BottomSheet,
     Button,
@@ -69,7 +72,30 @@ export function LibraryAppCard({
   const [menuOpen, setMenuOpen] = useState(false);
   const isMobile = useIsMobile();
 
+  const leadingActions: SwipeAction[] = isPointerCoarse()
+    ? [{
+        id: "pin",
+        label: isPinned ? "Unpin" : "Pin",
+        icon: isPinned ? PinOff : Pin,
+        onSelect: () => onPin(app),
+      }]
+    : [];
+  const trailingActions: SwipeAction[] = isPointerCoarse() && onDelete
+    ? [{
+        id: "delete",
+        label: "Delete",
+        icon: Trash2,
+        variant: "destructive",
+        onSelect: () => onDelete(app),
+      }]
+    : [];
+
   return (
+    <SwipeActionReveal
+      leadingActions={leadingActions}
+      trailingActions={trailingActions}
+      className="rounded-xl"
+    >
     <div
       className={cn(
         "group relative flex flex-col gap-2",
@@ -126,6 +152,7 @@ export function LibraryAppCard({
         </span>
       </button>
     </div>
+    </SwipeActionReveal>
   );
 }
 
