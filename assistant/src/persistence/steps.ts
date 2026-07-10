@@ -434,6 +434,7 @@ import { migrateDeleteNonDefaultMemoryScopes } from "./migrations/323-delete-non
 import { migrateMessageFinalizedColumn } from "./migrations/324-message-finalized-column.js";
 import { createConfigSettingEventsTable } from "./migrations/325-create-config-setting-events.js";
 import { migrateMoveInjectionEventsToMemoryDb } from "./migrations/326-move-injection-events-to-memory-db.js";
+import { migrateDropMemoryV3LearnedEdgeTables } from "./migrations/327-drop-memory-v3-learned-edge-tables.js";
 import type { MigrationStep } from "./migrations/run-migrations.js";
 
 export const migrationSteps: MigrationStep[] = [
@@ -1339,4 +1340,5 @@ export const migrationSteps: MigrationStep[] = [
   migrateMessageFinalizedColumn,
   createConfigSettingEventsTable,
   migrateMoveInjectionEventsToMemoryDb,
+  migrateDropMemoryV3LearnedEdgeTables,
 ];
